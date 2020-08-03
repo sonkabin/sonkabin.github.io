@@ -262,6 +262,94 @@ mjx-container[display="true"] + br {
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/08/03/HRNet/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="John Doe">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/08/03/HRNet/" class="post-title-link" itemprop="url">HRNet</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-08-03 22:11:52 / Modified: 22:12:33" itemprop="dateCreated datePublished" datetime="2020-08-03T22:11:52+08:00">2020-08-03</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>目前姿态估计领域的网络主要是高分辨率下采样为低分辨率，再低分辨率上采样为高分辨率，同分辨率之间用skip connections连接，比如Hourglass。</p>
+<p>论文提出High-Resolution Net(HRNet)。网络维护多个分辨率的分支，每个分支都会与其他分支进行信息交换。这么做的优点有：</p>
+<ol>
+<li>并行的分支结构加上不断地交换不同分支之间的信息，使得信息更加丰富</li>
+<li>最后使用最顶部的分支做姿态估计，不同分支之间的信息融合本质是信息增强操作（低级表达增强高级表达，高级表达增强低级表达），而如Hourglass则是将低级表达与高级表达融合</li>
+</ol>
+<h2 id="Approach"><a href="#Approach" class="headerlink" title="Approach"></a>Approach</h2><h3 id="网络结构图"><a href="#网络结构图" class="headerlink" title="网络结构图"></a>网络结构图</h3><p><img src="HRNet/hrnet%E7%BD%91%E7%BB%9C%E7%BB%93%E6%9E%84%E5%9B%BE.jpg" alt="hrnet网络结构图"></p>
+<p>在维护一个原分辨分支的基础上，随着stage的增加而添加新的分辨率分支（stage2时添加1/2分辨率的平行分支，stage3时添加1/4分辨率的平行分支），不同的分支之间通过exchange units实现信息交换（多尺度融合），最后顶层分支用作姿态估计。</p>
+<h3 id="并行的多分辨率网络"><a href="#并行的多分辨率网络" class="headerlink" title="并行的多分辨率网络"></a>并行的多分辨率网络</h3><p><img src="HRNet/hrnet%E5%B9%B6%E8%A1%8C%E5%A4%9A%E5%88%86%E8%BE%A8%E7%8E%87%E7%BD%91%E7%BB%9C.jpg" alt="hrnet并行多分辨率网络"></p>
+<p>stage和分支数相同，每一个新的stage都会新增一个分支</p>
+<h3 id="串行的多分辨率网络"><a href="#串行的多分辨率网络" class="headerlink" title="串行的多分辨率网络"></a>串行的多分辨率网络</h3><p>$N_{11} \rightarrow N_{22} \rightarrow N_{33} \rightarrow N_{44}$，每次新增的分支分辨率为上一个分支分辨率的1/2</p>
+<h3 id="多尺度融合"><a href="#多尺度融合" class="headerlink" title="多尺度融合"></a>多尺度融合</h3><p>由exchange unit来实现多尺度融合。exchange unit有两个功能：收集信息和分发信息。两个功能是一对逆操作。</p>
+<p><img src="HRNet/hrnet%E4%BA%A4%E6%8D%A2%E5%8D%95%E5%85%83.jpg" alt="hrnet交换单元"></p>
+<p>当前分支的信息来源于三部分：在其上的分支、同一个分支、在其下的分支。其上的分支下采样、其下的分支需上采样，以此得到与本分支相同的分辨率</p>
+<h3 id="heatmap估计"><a href="#heatmap估计" class="headerlink" title="heatmap估计"></a>heatmap估计</h3><p>最后一个exchange unit的顶层分支作为predicted heatmap，将损失函数MSE应用于groundtruth heatmap和predicted heatmap。</p>
+<h3 id="网络举例"><a href="#网络举例" class="headerlink" title="网络举例"></a>网络举例</h3><p>以图中的网络为例，包含4个stage和4个分支，每次分支分辨率降低一半时该分支通道数增加一倍。在stage1中，用的是有4个残差单元的bottleneck，其通道数为64，接着跟一个3×3的卷积将通道数降低为C。第2个stage开始的所有分支的每个分支有4个basic block，basic block包含2个3×3的卷积，每个分支上的4个basic block加上1个exchange unit构成1个exchange block。stage2, stage3, stage4分别包含1, 4（2+2）, 3个exchange block。</p>
+<p>论文设计了小网络(HRNet-W32)和大网络(HRNet-W48)，表示heatmap的通道数。HRNet-W32的4个分支通道数分别是32, 64, 128, 256，而HRNet-48的4个分支通道数分别为48, 96, 192, 384。</p>
+<p><strong>bottleneck</strong></p>
+<p>![hrnet-bottleneck block](HRNet/hrnet-bottleneck block.jpg)</p>
+<p><strong>basic block</strong>结构和bottleneck的结构类似，bottleneck去掉一层conv-bn-relu后就是basic block。</p>
+<h2 id="Experiments"><a href="#Experiments" class="headerlink" title="Experiments"></a>Experiments</h2><p><strong>COCO验证集上的结果</strong></p>
+<p><img src="HRNet/hrnet-COCO%E9%AA%8C%E8%AF%81%E9%9B%86%E7%BB%93%E6%9E%9C.jpg" alt="COCO验证集结果"></p>
+<p><strong>COCO test-dev上的结果</strong></p>
+<p><img src="HRNet/hrnet-COCO-test-dev%E7%BB%93%E6%9E%9C.jpg" alt="hrnet-COCO-test-dev结果"></p>
+<p><strong>消融实验</strong></p>
+<p><img src="HRNet/hrnet-%E6%B6%88%E8%9E%8D%E5%AE%9E%E9%AA%8C.jpg" alt="消融实验"></p>
+<p>Int. exchange across = intermediate exchange across stages，不同stage之间的信息交换</p>
+<p>Int. exchage within = intermediate exchange within stages，同一个stage之间的信息交换</p>
+<p><img src="HRNet/hrnet-%E6%B6%88%E8%9E%8D%E5%AE%9E%E9%AA%8C2.jpg" alt="hrnet-消融实验2"></p>
+<p>其中1×、2×、4×分别表示用high-resolution分支、medium-resolution分支、low-resolution分支进行姿态估计。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/07/29/hello-world/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -394,7 +482,7 @@ mjx-container[display="true"] + br {
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">1</span>
+          <span class="site-state-item-count">2</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
